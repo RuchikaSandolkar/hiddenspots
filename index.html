@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#c9a84c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HiddenSpots">
+<meta name="description" content="Discover hidden local gems, cafes, restaurants, nightlife and activities in any city worldwide">
+<title>HiddenSpots</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<style>
+:root{
+  --black:#0a0a0a;--cream:#f5f0e8;--gold:#c9a84c;--gold-light:#e8d5a3;
+  --dark:#141414;--card:#1a1a1a;--gray:#666;--border:rgba(201,168,76,0.2);
+  --nav-h:56px;--bottom-h:64px;--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;background:var(--black);}
+body{color:var(--cream);font-family:'DM Sans',sans-serif;font-weight:300;}
+
+/* ── TOP NAV ── */
+.topnav{
+  position:fixed;top:0;left:0;right:0;z-index:2000;
+  height:var(--nav-h);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;
+  background:rgba(10,10,10,0.97);
+  border-bottom:1px solid var(--border);
+}
+.logo{font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--gold);}
+.logo span{color:var(--cream);}
+.install-btn{
+  background:var(--gold);color:var(--black);border:none;
+  padding:7px 14px;font-size:11px;letter-spacing:1px;font-weight:500;
+  font-family:'DM Sans',sans-serif;cursor:pointer;display:none;
+}
+
+/* ── MAIN AREA ── */
+.main{
+  position:fixed;
+  top:var(--nav-h);
+  left:0;right:0;
+  bottom:calc(var(--bottom-h) + var(--safe-bottom));
+  overflow:hidden;
+}
+
+/* ── VIEWS ── */
+.view{position:absolute;inset:0;overflow:hidden;display:none;}
+.view.active{display:flex;flex-direction:column;}
+
+/* ── SEARCH VIEW ── */
+.search-panel{
+  background:var(--dark);
+  padding:16px;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.search-bar{
+  display:flex;gap:8px;margin-bottom:12px;
+}
+.search-input{
+  flex:1;background:var(--black);border:1px solid var(--border);
+  color:var(--cream);padding:11px 14px;font-family:'DM Sans',sans-serif;
+  font-size:14px;outline:none;border-radius:4px;
+}
+.search-input:focus{border-color:var(--gold);}
+.search-input::placeholder{color:var(--gray);}
+.loc-btn{
+  background:var(--gold);color:var(--black);border:none;
+  padding:0 16px;font-size:18px;cursor:pointer;border-radius:4px;
+  flex-shrink:0;
+}
+.go-btn{
+  background:var(--gold);color:var(--black);border:none;
+  padding:11px 20px;font-size:13px;font-weight:500;letter-spacing:1px;
+  font-family:'DM Sans',sans-serif;cursor:pointer;border-radius:4px;
+  white-space:nowrap;
+}
+
+.cat-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;}
+.cat-row::-webkit-scrollbar{display:none;}
+.cat-chip{
+  background:transparent;border:1px solid var(--border);
+  color:rgba(245,240,232,0.6);padding:6px 14px;font-size:12px;
+  cursor:pointer;font-family:'DM Sans',sans-serif;
+  transition:all 0.15s;white-space:nowrap;border-radius:20px;
+  display:flex;align-items:center;gap:4px;
+}
+.cat-chip.active{background:var(--gold);color:var(--black);border-color:var(--gold);}
+
+.radius-row{
+  display:flex;align-items:center;gap:10px;
+  margin-top:10px;
+}
+.radius-label{font-size:11px;color:var(--gray);letter-spacing:1px;white-space:nowrap;}
+.radius-slider{flex:1;accent-color:var(--gold);height:4px;}
+.radius-val{font-size:12px;color:var(--gold);min-width:40px;text-align:right;}
+
+/* RESULTS */
+.results-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 16px;background:var(--dark);border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.results-count{font-size:11px;color:var(--gray);letter-spacing:1px;}
+.sort-btn{font-size:11px;color:var(--gold);background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;}
+
+.results-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 12px;}
+.results-list::-webkit-scrollbar{display:none;}
+
+/* PLACE CARD */
+.pcard{
+  background:var(--black);border:1px solid var(--border);
+  padding:14px;margin-bottom:8px;cursor:pointer;
+  transition:border-color 0.2s;border-radius:6px;
+  active:border-color:var(--gold);
+}
+.pcard:active{border-color:var(--gold);}
+.pcard.sel{border-color:var(--gold);border-left:3px solid var(--gold);}
+.pcard-top{display:flex;justify-content:space-between;margin-bottom:4px;}
+.pcard-cat{font-size:10px;letter-spacing:1px;text-transform:uppercase;}
+.pcard-dist{font-size:11px;color:var(--gray);}
+.pcard-name{font-family:'Playfair Display',serif;font-size:16px;margin-bottom:4px;line-height:1.3;}
+.pcard-addr{font-size:11px;color:rgba(245,240,232,0.4);margin-bottom:8px;}
+.pcard-tags{display:flex;gap:5px;flex-wrap:wrap;}
+.ptag{font-size:10px;padding:2px 8px;border:1px solid var(--border);border-radius:10px;color:var(--gray);}
+.ptag.g{border-color:rgba(76,175,110,0.4);color:#4caf6e;}
+.ptag.b{border-color:rgba(76,140,175,0.4);color:#4c8caf;}
+.ptag.y{border-color:rgba(201,168,76,0.4);color:var(--gold);}
+
+/* STATE BOXES */
+.state-box{padding:48px 24px;text-align:center;}
+.state-emoji{font-size:48px;margin-bottom:16px;}
+.state-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--gold);margin-bottom:8px;}
+.state-sub{font-size:13px;color:var(--gray);line-height:1.7;}
+.spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── MAP VIEW ── */
+#map{width:100%;height:100%;}
+.map-fab{
+  position:absolute;z-index:700;
+  background:rgba(10,10,10,0.95);border:1px solid var(--border);
+  color:var(--cream);width:42px;height:42px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;cursor:pointer;border-radius:8px;
+}
+.fab-locate{bottom:16px;right:16px;}
+.fab-zoom-in{bottom:72px;right:16px;font-size:20px;}
+.fab-zoom-out{bottom:120px;right:16px;font-size:20px;}
+
+/* DETAIL SHEET (bottom slide up) */
+.sheet{
+  position:absolute;bottom:0;left:0;right:0;z-index:800;
+  background:rgba(8,8,8,0.99);
+  border-top:2px solid var(--gold);
+  border-radius:16px 16px 0 0;
+  padding:20px 18px 24px;
+  transform:translateY(100%);
+  transition:transform 0.32s cubic-bezier(0.4,0,0.2,1);
+  max-height:72%;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.sheet.open{transform:translateY(0);}
+.sheet-handle{
+  width:40px;height:4px;background:var(--border);
+  border-radius:2px;margin:0 auto 16px;
+}
+.sheet-close{
+  position:absolute;top:16px;right:16px;
+  background:none;border:1px solid var(--border);
+  color:var(--cream);width:28px;height:28px;
+  border-radius:50%;cursor:pointer;font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+}
+.sheet-badge{font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;}
+.sheet-name{font-family:'Playfair Display',serif;font-size:22px;font-weight:700;line-height:1.2;margin-bottom:4px;}
+.sheet-addr{font-size:12px;color:rgba(245,240,232,0.45);margin-bottom:14px;}
+.sheet-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.sheet-stat{background:var(--card);border:1px solid var(--border);padding:10px 12px;border-radius:4px;}
+.sheet-stat-label{font-size:10px;color:var(--gray);letter-spacing:1px;margin-bottom:3px;}
+.sheet-stat-val{font-size:12px;color:var(--cream);}
+.sheet-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.sact{
+  flex:1;min-width:100px;
+  background:transparent;border:1px solid var(--border);color:var(--cream);
+  padding:11px 8px;font-size:11px;letter-spacing:1px;
+  cursor:pointer;font-family:'DM Sans',sans-serif;
+  transition:all 0.2s;border-radius:4px;text-align:center;
+  text-transform:uppercase;
+}
+.sact:active,.sact.primary{background:var(--gold);color:var(--black);border-color:var(--gold);}
+
+/* ── MY DAY VIEW ── */
+.day-view{padding:16px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.day-header{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:20px;
+}
+.day-title{font-family:'Playfair Display',serif;font-size:22px;color:var(--gold);}
+.day-clear{background:none;border:1px solid var(--border);color:var(--gray);padding:6px 14px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:4px;}
+.day-stop{
+  display:flex;gap:14px;align-items:flex-start;
+  margin-bottom:16px;padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+.stop-num{
+  width:36px;height:36px;background:var(--gold);color:var(--black);
+  font-size:14px;font-weight:500;display:flex;align-items:center;
+  justify-content:center;border-radius:50%;flex-shrink:0;
+}
+.stop-info{flex:1;}
+.stop-name{font-family:'Playfair Display',serif;font-size:16px;margin-bottom:3px;}
+.stop-cat{font-size:11px;color:var(--gray);}
+.stop-remove{
+  background:none;border:1px solid var(--border);color:var(--gray);
+  width:28px;height:28px;display:flex;align-items:center;
+  justify-content:center;cursor:pointer;font-size:12px;border-radius:50%;
+}
+.share-btn{
+  width:100%;background:var(--gold);color:var(--black);border:none;
+  padding:14px;font-family:'DM Sans',sans-serif;font-size:13px;
+  font-weight:500;letter-spacing:2px;cursor:pointer;border-radius:4px;
+  text-transform:uppercase;margin-top:8px;
+}
+
+/* ── BOTTOM NAV ── */
+.bottomnav{
+  position:fixed;bottom:0;left:0;right:0;z-index:2000;
+  height:calc(var(--bottom-h) + var(--safe-bottom));
+  padding-bottom:var(--safe-bottom);
+  background:rgba(10,10,10,0.97);
+  border-top:1px solid var(--border);
+  display:flex;align-items:center;
+}
+.nav-tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;cursor:pointer;
+  padding:8px 0;background:none;border:none;color:var(--gray);
+  font-family:'DM Sans',sans-serif;transition:color 0.15s;
+}
+.nav-tab.active{color:var(--gold);}
+.nav-icon{font-size:20px;line-height:1;}
+.nav-label{font-size:10px;letter-spacing:0.5px;}
+
+/* INSTALL BANNER */
+.install-banner{
+  position:fixed;bottom:calc(var(--bottom-h) + var(--safe-bottom) + 8px);
+  left:12px;right:12px;z-index:1500;
+  background:var(--dark);border:1px solid var(--gold);
+  padding:14px 16px;display:none;
+  align-items:center;justify-content:space-between;gap:12px;
+  border-radius:8px;
+}
+.install-banner.show{display:flex;}
+.install-text{font-size:13px;color:var(--cream);line-height:1.4;flex:1;}
+.install-text strong{color:var(--gold);display:block;margin-bottom:2px;font-size:14px;}
+.install-now{
+  background:var(--gold);color:var(--black);border:none;
+  padding:8px 16px;font-size:12px;font-weight:500;letter-spacing:1px;
+  cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:4px;
+  white-space:nowrap;
+}
+.install-dismiss{
+  background:none;border:none;color:var(--gray);font-size:18px;cursor:pointer;
+}
+
+/* ── AI PLANNER ── */
+.ai-view{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0;}
+
+/* Step wizard */
+.ai-steps{padding:16px;}
+.ai-step-header{display:flex;align-items:center;gap:10px;margin-bottom:20px;}
+.ai-step-title{font-family:'Playfair Display',serif;font-size:20px;color:var(--gold);}
+.ai-step-sub{font-size:12px;color:var(--gray);margin-top:2px;}
+.step-dots{display:flex;gap:6px;margin-left:auto;}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--border);}
+.sdot.done{background:var(--gold);}
+.sdot.active{background:var(--gold);transform:scale(1.3);}
+
+/* Question cards */
+.q-label{font-size:11px;letter-spacing:2px;color:var(--gold);text-transform:uppercase;margin-bottom:10px;}
+.q-title{font-family:'Playfair Display',serif;font-size:18px;margin-bottom:16px;line-height:1.4;}
+
+/* Time picker */
+.time-picker{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.time-chip{background:var(--black);border:1px solid var(--border);color:rgba(245,240,232,0.6);padding:10px 16px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:6px;transition:all 0.15s;}
+.time-chip.sel{background:var(--gold);color:var(--black);border-color:var(--gold);}
+
+/* Vibe selector */
+.vibe-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;}
+.vibe-card{background:var(--black);border:1px solid var(--border);padding:14px 12px;cursor:pointer;border-radius:8px;transition:all 0.15s;text-align:center;}
+.vibe-card.sel{border-color:var(--gold);background:rgba(201,168,76,0.08);}
+.vibe-card:active{border-color:var(--gold);}
+.vibe-emoji{font-size:24px;margin-bottom:6px;}
+.vibe-name{font-size:13px;font-weight:500;margin-bottom:2px;}
+.vibe-desc{font-size:10px;color:var(--gray);}
+
+/* Who picker */
+.who-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;}
+.who-chip{background:var(--black);border:1px solid var(--border);color:rgba(245,240,232,0.6);padding:10px 14px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:20px;transition:all 0.15s;display:flex;align-items:center;gap:6px;}
+.who-chip.sel{background:var(--gold);color:var(--black);border-color:var(--gold);}
+
+/* Budget */
+.budget-row{display:flex;gap:8px;margin-bottom:20px;}
+.budget-btn{flex:1;background:var(--black);border:1px solid var(--border);color:rgba(245,240,232,0.6);padding:12px 8px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:6px;text-align:center;transition:all 0.15s;}
+.budget-btn.sel{background:var(--gold);color:var(--black);border-color:var(--gold);}
+
+/* Interests */
+.interests-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
+.int-chip{background:var(--black);border:1px solid var(--border);color:rgba(245,240,232,0.6);padding:8px 14px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:20px;transition:all 0.15s;display:flex;align-items:center;gap:5px;}
+.int-chip.sel{background:rgba(201,168,76,0.15);color:var(--gold);border-color:var(--gold);}
+
+/* Nav buttons */
+.ai-nav{display:flex;gap:8px;margin-top:4px;}
+.ai-back{background:transparent;border:1px solid var(--border);color:var(--gray);padding:13px 20px;font-size:12px;letter-spacing:1px;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:6px;flex-shrink:0;}
+.ai-next{flex:1;background:var(--gold);color:var(--black);border:none;padding:13px;font-size:13px;font-weight:500;letter-spacing:2px;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:6px;text-transform:uppercase;}
+.ai-next:disabled{background:var(--gray);cursor:not-allowed;}
+
+/* Result plan */
+.plan-result{padding:16px;}
+.plan-header{background:linear-gradient(135deg,rgba(201,168,76,0.12),rgba(201,168,76,0.04));border:1px solid var(--border);padding:16px;border-radius:8px;margin-bottom:16px;}
+.plan-headline{font-family:'Playfair Display',serif;font-size:20px;color:var(--gold);margin-bottom:4px;}
+.plan-meta{font-size:12px;color:var(--gray);}
+
+/* Timeline stops */
+.plan-stop{display:flex;gap:12px;margin-bottom:0;position:relative;}
+.plan-stop::before{content:'';position:absolute;left:19px;top:44px;bottom:-8px;width:1px;background:var(--border);}
+.plan-stop:last-child::before{display:none;}
+.stop-circle{width:40px;height:40px;border-radius:50%;background:var(--black);border:2px solid var(--gold);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;z-index:1;}
+.stop-body{flex:1;background:var(--card);border:1px solid var(--border);padding:14px;border-radius:8px;margin-bottom:10px;}
+.stop-time{font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:4px;}
+.stop-place{font-family:'Playfair Display',serif;font-size:16px;margin-bottom:4px;}
+.stop-why{font-size:12px;color:rgba(245,240,232,0.55);line-height:1.6;margin-bottom:8px;}
+.stop-tags{display:flex;gap:5px;flex-wrap:wrap;}
+.stag{font-size:10px;padding:2px 8px;border:1px solid var(--border);border-radius:10px;color:var(--gray);}
+.stag.gold{border-color:rgba(201,168,76,0.4);color:var(--gold);}
+.stop-add{background:transparent;border:1px solid var(--border);color:var(--cream);padding:7px 14px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:4px;margin-top:8px;transition:all 0.2s;text-transform:uppercase;}
+.stop-add:active,.stop-add.added{background:var(--gold);color:var(--black);border-color:var(--gold);}
+
+.plan-actions{display:flex;gap:8px;margin-top:16px;}
+.pact{flex:1;padding:12px;font-size:12px;letter-spacing:1px;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:6px;text-align:center;text-transform:uppercase;}
+.pact-share{background:var(--gold);color:var(--black);border:none;}
+.pact-redo{background:transparent;border:1px solid var(--border);color:var(--cream);}
+
+/* Loading animation */
+.ai-loading{padding:48px 24px;text-align:center;}
+.ai-loading-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--gold);margin-bottom:8px;}
+.ai-loading-sub{font-size:13px;color:var(--gray);margin-bottom:24px;line-height:1.6;}
+.pulse-dots{display:flex;justify-content:center;gap:8px;}
+.pulse-dot{width:10px;height:10px;border-radius:50%;background:var(--gold);animation:pulse 1.2s ease-in-out infinite;}
+.pulse-dot:nth-child(2){animation-delay:0.2s;}
+.pulse-dot:nth-child(3){animation-delay:0.4s;}
+@keyframes pulse{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
+.leaflet-container{background:#111!important;}
+.leaflet-tile{filter:brightness(0.65) saturate(0.6);}
+.leaflet-popup-content-wrapper{background:rgba(10,10,10,0.97);border:1px solid var(--border);border-radius:8px;color:var(--cream);box-shadow:none;}
+.leaflet-popup-tip{background:#1a1a1a;}
+.leaflet-popup-content{margin:12px 14px;font-family:'DM Sans',sans-serif;min-width:160px;}
+.lpop-cat{font-size:10px;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;}
+.lpop-name{font-family:'Playfair Display',serif;font-size:15px;font-weight:700;margin-bottom:4px;}
+.lpop-dist{font-size:11px;color:var(--gray);margin-bottom:8px;}
+.lpop-btn{background:var(--gold);color:#000;border:none;padding:7px 12px;font-size:11px;letter-spacing:1px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;border-radius:4px;text-transform:uppercase;}
+
+/* MARKER ICONS */
+.mk{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;border:2px solid rgba(255,255,255,0.1);box-shadow:0 2px 8px rgba(0,0,0,0.6);}
+.mk-food{background:#7a1e1e;}.mk-cafe{background:#5c3d2e;}.mk-bar{background:#1e2d5c;}
+.mk-park{background:#1e4a2d;}.mk-kids{background:#5c4a1e;}.mk-transport{background:#2a2a2a;}
+.mk-hotel{background:#2d1e5c;}.mk-user{background:var(--gold);border:3px solid #fff;}
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="logo">Hidden<span>Spots</span></div>
+  <button class="install-btn" id="installBtn" onclick="installApp()">Install App</button>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ── VIEW 1: SEARCH + LIST ── -->
+  <div class="view active" id="viewSearch">
+    <div class="search-panel">
+      <div class="search-bar">
+        <button class="loc-btn" onclick="useMyLocation()" title="My location">◎</button>
+        <input class="search-input" id="cityInput" placeholder="Search any city worldwide…" />
+        <button class="go-btn" onclick="doSearch()">Go</button>
+      </div>
+      <div class="cat-row" id="catRow">
+        <button class="cat-chip active" data-cat="all" onclick="setCat(this)">🌍 All</button>
+        <button class="cat-chip" data-cat="restaurant" onclick="setCat(this)">🍽 Food</button>
+        <button class="cat-chip" data-cat="cafe" onclick="setCat(this)">☕ Café</button>
+        <button class="cat-chip" data-cat="bar" onclick="setCat(this)">🍺 Bar</button>
+        <button class="cat-chip" data-cat="park" onclick="setCat(this)">🌿 Park</button>
+        <button class="cat-chip" data-cat="kids" onclick="setCat(this)">👦 Kids</button>
+        <button class="cat-chip" data-cat="transport" onclick="setCat(this)">🚇 Transit</button>
+        <button class="cat-chip" data-cat="hotel" onclick="setCat(this)">🏨 Hotel</button>
+      </div>
+      <div class="radius-row">
+        <span class="radius-label">Radius</span>
+        <input type="range" class="radius-slider" id="radiusSlider" min="500" max="10000" step="500" value="3000" oninput="updateRadius(this.value)">
+        <span class="radius-val" id="radiusVal">3 km</span>
+      </div>
+    </div>
+    <div class="results-bar">
+      <span class="results-count" id="resultsCount">Ready — tap Go to search</span>
+      <button class="sort-btn" onclick="sortDist()">↕ Distance</button>
+    </div>
+    <div class="results-list" id="resultsList">
+      <div class="state-box">
+        <div class="state-emoji">🗺️</div>
+        <div class="state-title">Find your perfect spot</div>
+        <div class="state-sub">Tap ◎ for your location or type any city. Choose a category and tap Go. Real places appear in seconds.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── VIEW 2: MAP ── -->
+  <div class="view" id="viewMap">
+    <div id="map"></div>
+    <button class="map-fab fab-locate" onclick="goToUser()">◎</button>
+    <button class="map-fab fab-zoom-in" onclick="map&&map.zoomIn()">+</button>
+    <button class="map-fab fab-zoom-out" onclick="map&&map.zoomOut()">−</button>
+    <!-- Detail sheet -->
+    <div class="sheet" id="sheet">
+      <div class="sheet-handle"></div>
+      <button class="sheet-close" onclick="closeSheet()">✕</button>
+      <div id="sheetContent"></div>
+    </div>
+  </div>
+
+  <!-- ── VIEW 3: MY DAY ── -->
+  <div class="view" id="viewDay">
+    <div class="day-view" id="dayContent">
+      <div class="day-header">
+        <div class="day-title">My Day Plan</div>
+        <button class="day-clear" onclick="clearDay()">Clear all</button>
+      </div>
+      <div id="dayStops"></div>
+      <button class="share-btn" onclick="shareDay()" id="shareBtn" style="display:none">Share my day plan 🔗</button>
+      <div class="state-box" id="dayEmpty">
+        <div class="state-emoji">📋</div>
+        <div class="state-title">No stops yet</div>
+        <div class="state-sub">Search for places and tap "Add to my day" to build your perfect day itinerary.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+  <!-- ── VIEW 4: AI TRIP PLANNER ── -->
+  <div class="view" id="viewAi">
+    <div class="ai-view" id="aiViewInner">
+
+      <!-- STEP 1: Arrival time -->
+      <div class="ai-steps" id="aiStep1">
+        <div class="ai-step-header">
+          <div><div class="ai-step-title">Plan My Day ✨</div><div class="ai-step-sub">Step 1 of 4</div></div>
+          <div class="step-dots"><div class="sdot active"></div><div class="sdot"></div><div class="sdot"></div><div class="sdot"></div></div>
+        </div>
+        <div class="q-label">Your time</div>
+        <div class="q-title">What time do you arrive in the city?</div>
+        <div class="time-picker" id="arrivalPicker">
+          <button class="time-chip" data-v="06:00" onclick="selTime(this,'arrival')">6:00 AM</button>
+          <button class="time-chip" data-v="08:00" onclick="selTime(this,'arrival')">8:00 AM</button>
+          <button class="time-chip" data-v="09:00" onclick="selTime(this,'arrival')">9:00 AM</button>
+          <button class="time-chip" data-v="10:00" onclick="selTime(this,'arrival')">10:00 AM</button>
+          <button class="time-chip" data-v="11:00" onclick="selTime(this,'arrival')">11:00 AM</button>
+          <button class="time-chip" data-v="12:00" onclick="selTime(this,'arrival')">12:00 PM (Noon)</button>
+          <button class="time-chip" data-v="14:00" onclick="selTime(this,'arrival')">2:00 PM</button>
+          <button class="time-chip" data-v="16:00" onclick="selTime(this,'arrival')">4:00 PM</button>
+        </div>
+        <div class="q-label" style="margin-top:4px">When do you leave?</div>
+        <div class="time-picker" id="departurePicker">
+          <button class="time-chip" data-v="18:00" onclick="selTime(this,'departure')">6:00 PM</button>
+          <button class="time-chip" data-v="20:00" onclick="selTime(this,'departure')">8:00 PM</button>
+          <button class="time-chip" data-v="22:00" onclick="selTime(this,'departure')">10:00 PM</button>
+          <button class="time-chip" data-v="23:59" onclick="selTime(this,'departure')">Midnight</button>
+          <button class="time-chip" data-v="next" onclick="selTime(this,'departure')">Next day morning</button>
+        </div>
+        <div class="ai-nav">
+          <button class="ai-next" id="next1" onclick="goStep(2)" disabled>Next →</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Who is coming -->
+      <div class="ai-steps" id="aiStep2" style="display:none">
+        <div class="ai-step-header">
+          <div><div class="ai-step-title">Who's joining? 👥</div><div class="ai-step-sub">Step 2 of 4</div></div>
+          <div class="step-dots"><div class="sdot done"></div><div class="sdot active"></div><div class="sdot"></div><div class="sdot"></div></div>
+        </div>
+        <div class="q-label">Your group</div>
+        <div class="q-title">Who are you exploring the city with?</div>
+        <div class="who-row">
+          <button class="who-chip" data-v="solo" onclick="selWho(this)">🧍 Solo</button>
+          <button class="who-chip" data-v="couple" onclick="selWho(this)">💑 Couple</button>
+          <button class="who-chip" data-v="friends" onclick="selWho(this)">👫 Friends</button>
+          <button class="who-chip" data-v="family_kids" onclick="selWho(this)">👨‍👩‍👧 Family with kids</button>
+          <button class="who-chip" data-v="family_adult" onclick="selWho(this)">👨‍👩‍👦 Family adults only</button>
+          <button class="who-chip" data-v="business" onclick="selWho(this)">💼 Business trip</button>
+        </div>
+        <div class="q-label" style="margin-top:8px">Your budget</div>
+        <div class="budget-row">
+          <button class="budget-btn" data-v="free" onclick="selBudget(this)">💚 Free &<br>Budget</button>
+          <button class="budget-btn" data-v="mid" onclick="selBudget(this)">💛 Mid range<br>€10-40</button>
+          <button class="budget-btn" data-v="splurge" onclick="selBudget(this)">💎 Splurge<br>€40+</button>
+        </div>
+        <div class="ai-nav">
+          <button class="ai-back" onclick="goStep(1)">← Back</button>
+          <button class="ai-next" id="next2" onclick="goStep(3)" disabled>Next →</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: Vibes -->
+      <div class="ai-steps" id="aiStep3" style="display:none">
+        <div class="ai-step-header">
+          <div><div class="ai-step-title">Your Vibe 🎯</div><div class="ai-step-sub">Step 3 of 4</div></div>
+          <div class="step-dots"><div class="sdot done"></div><div class="sdot done"></div><div class="sdot active"></div><div class="sdot"></div></div>
+        </div>
+        <div class="q-label">Pick up to 3 vibes</div>
+        <div class="q-title">What kind of day do you want?</div>
+        <div class="vibe-grid" id="vibeGrid">
+          <div class="vibe-card" data-v="hidden_gems" onclick="selVibe(this)"><div class="vibe-emoji">💎</div><div class="vibe-name">Hidden Gems</div><div class="vibe-desc">Secret local spots</div></div>
+          <div class="vibe-card" data-v="nightlife" onclick="selVibe(this)"><div class="vibe-emoji">🌙</div><div class="vibe-name">Nightlife</div><div class="vibe-desc">Bars, clubs, rooftops</div></div>
+          <div class="vibe-card" data-v="couple_romantic" onclick="selVibe(this)"><div class="vibe-emoji">🌹</div><div class="vibe-name">Romantic</div><div class="vibe-desc">Cafés, river walks, wine</div></div>
+          <div class="vibe-card" data-v="history_culture" onclick="selVibe(this)"><div class="vibe-emoji">🏛</div><div class="vibe-name">History & Culture</div><div class="vibe-desc">Museums, old town</div></div>
+          <div class="vibe-card" data-v="local_life" onclick="selVibe(this)"><div class="vibe-emoji">🚶</div><div class="vibe-name">Live Like a Local</div><div class="vibe-desc">Markets, neighbourhoods</div></div>
+          <div class="vibe-card" data-v="nature_outdoor" onclick="selVibe(this)"><div class="vibe-emoji">🌿</div><div class="vibe-name">Nature & Outdoors</div><div class="vibe-desc">Parks, river, forests</div></div>
+          <div class="vibe-card" data-v="food_coffee" onclick="selVibe(this)"><div class="vibe-emoji">☕</div><div class="vibe-name">Food & Coffee</div><div class="vibe-desc">Cafés, local food</div></div>
+          <div class="vibe-card" data-v="shopping" onclick="selVibe(this)"><div class="vibe-emoji">🛍</div><div class="vibe-name">Shopping</div><div class="vibe-desc">Markets, boutiques</div></div>
+          <div class="vibe-card" data-v="sports_active" onclick="selVibe(this)"><div class="vibe-emoji">⚽</div><div class="vibe-name">Sports & Active</div><div class="vibe-desc">Sports zones, cycling</div></div>
+          <div class="vibe-card" data-v="kids_family" onclick="selVibe(this)"><div class="vibe-emoji">🎠</div><div class="vibe-name">Kids & Family</div><div class="vibe-desc">Zoo, museums, parks</div></div>
+        </div>
+        <div class="ai-nav">
+          <button class="ai-back" onclick="goStep(2)">← Back</button>
+          <button class="ai-next" id="next3" onclick="goStep(4)" disabled>Next →</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: Confirm -->
+      <div class="ai-steps" id="aiStep4" style="display:none">
+        <div class="ai-step-header">
+          <div><div class="ai-step-title">Almost there! 🚀</div><div class="ai-step-sub">Step 4 of 4</div></div>
+          <div class="step-dots"><div class="sdot done"></div><div class="sdot done"></div><div class="sdot done"></div><div class="sdot active"></div></div>
+        </div>
+        <div class="q-label">Your plan summary</div>
+        <div id="planSummary" style="background:var(--black);border:1px solid var(--border);padding:16px;border-radius:8px;margin-bottom:20px;font-size:13px;line-height:1.8;color:rgba(245,240,232,0.7);"></div>
+        <div class="q-title" style="font-size:15px;">Any special request? (optional)</div>
+        <textarea id="extraRequest" placeholder="e.g. I have a baby stroller · I don't drink alcohol · I love street art · I want to avoid crowds…" style="width:100%;background:var(--black);border:1px solid var(--border);color:var(--cream);padding:12px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;resize:none;height:90px;border-radius:6px;margin-bottom:20px;"></textarea>
+        <div class="ai-nav">
+          <button class="ai-back" onclick="goStep(3)">← Back</button>
+          <button class="ai-next" id="next4" onclick="generatePlan()">✨ Generate My Plan</button>
+        </div>
+      </div>
+
+      <!-- LOADING -->
+      <div id="aiLoading" style="display:none">
+        <div class="ai-loading">
+          <div style="font-size:48px;margin-bottom:16px;">🗺️</div>
+          <div class="ai-loading-title">Building your perfect day…</div>
+          <div class="ai-loading-sub" id="loadingMsg">Analysing your preferences and finding the best spots in the city just for you…</div>
+          <div class="pulse-dots"><div class="pulse-dot"></div><div class="pulse-dot"></div><div class="pulse-dot"></div></div>
+        </div>
+      </div>
+
+      <!-- RESULT PLAN -->
+      <div id="aiResult" style="display:none">
+        <div class="plan-result">
+          <div class="plan-header">
+            <div class="plan-headline" id="planTitle">Your City Day Plan</div>
+            <div class="plan-meta" id="planMeta"></div>
+          </div>
+          <div id="planStops"></div>
+          <div class="plan-actions">
+            <button class="pact pact-share" onclick="sharePlan()">Share Plan 🔗</button>
+            <button class="pact pact-redo" onclick="resetPlanner()">Start Over</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- end .main -->
+<nav class="bottomnav">
+  <button class="nav-tab active" id="tab-search" onclick="switchTab('search')">
+    <span class="nav-icon">🔍</span>
+    <span class="nav-label">Search</span>
+  </button>
+  <button class="nav-tab" id="tab-map" onclick="switchTab('map')">
+    <span class="nav-icon">🗺️</span>
+    <span class="nav-label">Map</span>
+  </button>
+  <button class="nav-tab" id="tab-day" onclick="switchTab('day')">
+    <span class="nav-icon">📋</span>
+    <span class="nav-label">My Day <span id="dayBadge" style="display:none;background:var(--gold);color:#000;border-radius:50%;width:16px;height:16px;font-size:9px;display:inline-flex;align-items:center;justify-content:center;margin-left:2px;vertical-align:middle"></span></span>
+  </button>
+  <button class="nav-tab" id="tab-ai" onclick="switchTab('ai')">
+    <span class="nav-icon">✨</span>
+    <span class="nav-label">AI Plan</span>
+  </button>
+</nav>
+
+<!-- INSTALL BANNER -->
+<div class="install-banner" id="installBanner">
+  <div class="install-text">
+    <strong>Install HiddenSpots</strong>
+    Add to your home screen for instant access
+  </div>
+  <button class="install-now" onclick="installApp()">Install</button>
+  <button class="install-dismiss" onclick="dismissInstall()">✕</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// ── DATA ──────────────────────────────────────────────────
+const PLACES=[
+  {id:1001,name:"Holy Cross Brewing Society",cat:"cafe",lat:50.1115,lng:8.6910,addr:"Fahrgasse 7, Altstadt",opening:"Mon-Fri 08:00-18:00",cuisine:"Specialty coffee",fee:"no",wheelchair:"yes"},
+  {id:1002,name:"Amelie's Wohnzimmer",cat:"cafe",lat:50.1198,lng:8.6892,addr:"Berger Str. 181, Bornheim",opening:"Daily 09:00-18:00",cuisine:"Brunch & coffee",fee:"no",wheelchair:"no"},
+  {id:1003,name:"VUX Coffee",cat:"cafe",lat:50.1073,lng:8.6652,addr:"Near Hauptbahnhof",opening:"Mon-Sat 07:30-17:00",cuisine:"Vietnamese coffee",fee:"no",wheelchair:"yes"},
+  {id:1004,name:"Bunca Barista",cat:"cafe",lat:50.1130,lng:8.6780,addr:"Kirchnerstraße 4",opening:"Mon-Fri 08:00-17:00",cuisine:"Brazilian coffee",fee:"no",wheelchair:"yes"},
+  {id:1005,name:"Mainkai Café",cat:"cafe",lat:50.1094,lng:8.6846,addr:"Mainkai 9, Altstadt",opening:"Daily 08:00-20:00",cuisine:"Coffee & brunch",fee:"no",wheelchair:"yes"},
+  {id:1006,name:"Städel Garden Café",cat:"cafe",lat:50.1018,lng:8.6822,addr:"Schaumainkai 63",opening:"Tue-Sun 10:00-18:00",cuisine:"Coffee & cake",fee:"no",wheelchair:"yes"},
+  {id:2001,name:"Apfelwein Solzer",cat:"restaurant",lat:50.1228,lng:8.7101,addr:"Berger Str. 260, Bornheim",opening:"Tue-Sun 17:00-23:00",cuisine:"German · Apfelwein",fee:"no",wheelchair:"no"},
+  {id:2002,name:"Meral Kebab Boat",cat:"restaurant",lat:50.1050,lng:8.6820,addr:"River Main, Sachsenhausen",opening:"Daily 11:00-22:00",cuisine:"Kebab · River view",fee:"no",wheelchair:"no"},
+  {id:2003,name:"Kleinmarkthalle",cat:"restaurant",lat:50.1132,lng:8.6828,addr:"Hasengasse 5-7",opening:"Mon-Fri 08:00-18:00",cuisine:"Market · Local food",fee:"no",wheelchair:"yes"},
+  {id:2004,name:"Zum Rad",cat:"restaurant",lat:50.1270,lng:8.7180,addr:"Leonhardsgasse 2, Seckbach",opening:"Tue-Sun 16:00-23:00",cuisine:"German · Traditional",fee:"no",wheelchair:"no"},
+  {id:2005,name:"Fichtekränzi",cat:"restaurant",lat:50.0985,lng:8.6890,addr:"Wallstraße 5, Sachsenhausen",opening:"Daily 17:00-01:00",cuisine:"German · Pub",fee:"no",wheelchair:"no"},
+  {id:2006,name:"Markt im Hof",cat:"restaurant",lat:50.0990,lng:8.6890,addr:"Brückenstraße 6, Sachsenhausen",opening:"Sat 10:00-18:00",cuisine:"Market · International",fee:"no",wheelchair:"no"},
+  {id:3001,name:"Fleming's Rooftop Bar",cat:"bar",lat:50.1165,lng:8.6802,addr:"Eschenheimer Tor 2",opening:"Mon-Sat 18:00-02:00",cuisine:"Cocktails · Rooftop",fee:"no",wheelchair:"yes"},
+  {id:3002,name:"Berger Strasse Bars",cat:"bar",lat:50.1195,lng:8.6970,addr:"Berger Strasse, Bornheim",opening:"Daily 17:00-02:00",cuisine:"Bar strip · Local vibe",fee:"no",wheelchair:"no"},
+  {id:3003,name:"Brückenviertel Bars",cat:"bar",lat:50.1010,lng:8.6910,addr:"Brückenstraße, Sachsenhausen",opening:"Daily 18:00-03:00",cuisine:"Craft beer · Artsy",fee:"no",wheelchair:"no"},
+  {id:3004,name:"Oosten Bar",cat:"bar",lat:50.1038,lng:8.7020,addr:"Wittelsbacherallee 15",opening:"Daily 12:00-01:00",cuisine:"Cocktails · River view",fee:"no",wheelchair:"yes"},
+  {id:4001,name:"Nizza Ufer Promenade",cat:"park",lat:50.1072,lng:8.6775,addr:"Nizzaufer, Sachsenhausen",opening:"Always open",cuisine:"",fee:"no",wheelchair:"yes"},
+  {id:4002,name:"Bethmann Park & Chinese Garden",cat:"park",lat:50.1222,lng:8.7022,addr:"Bethmannstraße, Nordend",opening:"Daily 07:00-21:00",cuisine:"",fee:"no",wheelchair:"yes"},
+  {id:4003,name:"Grüneburgpark",cat:"park",lat:50.1262,lng:8.6640,addr:"Grüneburgweg, Westend",opening:"Always open",cuisine:"",fee:"no",wheelchair:"yes"},
+  {id:4004,name:"Ostpark",cat:"park",lat:50.1100,lng:8.7180,addr:"Ostparkstraße",opening:"Always open",cuisine:"",fee:"no",wheelchair:"yes"},
+  {id:4005,name:"Stadtwald — Goethe Tower",cat:"park",lat:50.0766,lng:8.6650,addr:"Stadtwald, South Frankfurt",opening:"Daily 07:00-20:00",cuisine:"",fee:"no",wheelchair:"no"},
+  {id:5001,name:"Palmengarten",cat:"kids",lat:50.1238,lng:8.6590,addr:"Siesmayerstraße 61, Westend",opening:"Daily 09:00-18:00",cuisine:"",fee:"yes",wheelchair:"yes"},
+  {id:5002,name:"Senckenberg Natural History Museum",cat:"kids",lat:50.1195,lng:8.6520,addr:"Senckenberganlage 25",opening:"Daily 09:00-17:00",cuisine:"",fee:"yes",wheelchair:"yes"},
+  {id:5003,name:"Frankfurt Zoo",cat:"kids",lat:50.1148,lng:8.7108,addr:"Bernhard-Grzimek-Allee 1",opening:"Daily 09:00-19:00",cuisine:"",fee:"yes",wheelchair:"yes"},
+  {id:5004,name:"Kindermuseum Frankfurt",cat:"kids",lat:50.1108,lng:8.6775,addr:"Schaumainkai 15",opening:"Tue-Sun 10:00-18:00",cuisine:"",fee:"yes",wheelchair:"yes"},
+  {id:5005,name:"Spielplatz Grüneburgpark",cat:"kids",lat:50.1255,lng:8.6635,addr:"Grüneburgpark",opening:"Always open",cuisine:"",fee:"no",wheelchair:"no"},
+  {id:6001,name:"Frankfurt Hauptbahnhof",cat:"transport",lat:50.1070,lng:8.6635,addr:"Am Hauptbahnhof 1",opening:"Open 24h",cuisine:"",fee:"no",wheelchair:"yes"},
+  {id:6002,name:"Hauptwache S+U Bahn",cat:"transport",lat:50.1138,lng:8.6798,addr:"An der Hauptwache",opening:"Open 24h",cuisine:"",fee:"no",wheelchair:"yes"},
+  {id:6003,name:"Konstablerwache U+S",cat:"transport",lat:50.1134,lng:8.6924,addr:"Konstablerwache",opening:"Open 24h",cuisine:"",fee:"no",wheelchair:"yes"},
+  {id:7001,name:"25hours Hotel The Goldman",cat:"hotel",lat:50.1055,lng:8.7030,addr:"Hanauer Landstraße 127",opening:"Open 24h",cuisine:"",fee:"yes",wheelchair:"yes"},
+  {id:7002,name:"Generator Hostel Frankfurt",cat:"hotel",lat:50.1062,lng:8.6582,addr:"Baseler Straße 50",opening:"Open 24h",cuisine:"",fee:"yes",wheelchair:"yes"},
+  {id:7003,name:"Steigenberger Frankfurter Hof",cat:"hotel",lat:50.1105,lng:8.6740,addr:"Bethmannstraße 33",opening:"Open 24h",cuisine:"",fee:"yes",wheelchair:"yes"},
+];
+
+const CAT_COLOR={restaurant:"#af4c4c",cafe:"#8c6040",bar:"#4c5c8c",park:"#3d7a50",kids:"#8c6e3d",transport:"#555",hotel:"#5c3d8c",all:"#c9a84c"};
+const CAT_EMOJI={restaurant:"🍽",cafe:"☕",bar:"🍺",park:"🌿",kids:"👦",transport:"🚇",hotel:"🏨",all:"📍"};
+const MK_BG={restaurant:"mk-food",cafe:"mk-cafe",bar:"mk-bar",park:"mk-park",kids:"mk-kids",transport:"mk-transport",hotel:"mk-hotel"};
+
+// ── STATE ──────────────────────────────────────────────────
+let map, userMarker, radiusCircle, placeMarkers=[];
+let allResults=[], myDay=[], activeCat="all", activeId=null;
+let userLat=50.1109, userLng=8.6821;
+let deferredPrompt=null;
+
+// ── PWA INSTALL ────────────────────────────────────────────
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  document.getElementById('installBtn').style.display='block';
+  setTimeout(()=>document.getElementById('installBanner').classList.add('show'), 3000);
+});
+function installApp(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(()=>{ deferredPrompt=null; dismissInstall(); });
+  }
+}
+function dismissInstall(){
+  document.getElementById('installBanner').classList.remove('show');
+}
+window.addEventListener('appinstalled',()=>{
+  document.getElementById('installBtn').style.display='none';
+  dismissInstall();
+});
+
+// ── SERVICE WORKER ─────────────────────────────────────────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+// ── MAP INIT ───────────────────────────────────────────────
+function initMap(){
+  map=L.map('map',{zoomControl:false,attributionControl:false}).setView([userLat,userLng],13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  placeUserPin(userLat,userLng);
+  map.on('click',closeSheet);
+}
+
+function placeUserPin(lat,lng){
+  if(userMarker) map.removeLayer(userMarker);
+  const icon=L.divIcon({html:`<div class="mk mk-user">📍</div>`,className:'',iconSize:[34,34],iconAnchor:[17,17]});
+  userMarker=L.marker([lat,lng],{icon,zIndexOffset:1000}).addTo(map);
+  drawRadius();
+}
+function drawRadius(){
+  if(radiusCircle) map.removeLayer(radiusCircle);
+  const r=parseInt(document.getElementById('radiusSlider').value);
+  radiusCircle=L.circle([userLat,userLng],{radius:r,color:'rgba(201,168,76,0.5)',weight:1,fillColor:'rgba(201,168,76,0.04)',fillOpacity:1,dashArray:'4 6'}).addTo(map);
+}
+function updateRadius(v){
+  const km=(v/1000).toFixed(v<1000?1:0);
+  document.getElementById('radiusVal').textContent=km+' km';
+  drawRadius();
+}
+
+// ── GEOLOCATION ────────────────────────────────────────────
+function useMyLocation(){
+  const btn=document.querySelector('.loc-btn');
+  btn.textContent='⏳';
+  if(!navigator.geolocation){ alert('Geolocation not supported'); return; }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    userLat=pos.coords.latitude; userLng=pos.coords.longitude;
+    placeUserPin(userLat,userLng);
+    if(map) map.flyTo([userLat,userLng],14,{duration:1});
+    btn.textContent='✓';
+    setTimeout(()=>btn.textContent='◎',2000);
+    document.getElementById('cityInput').value='';
+    document.getElementById('cityInput').placeholder='Using your location';
+  },()=>{ btn.textContent='◎'; alert('Could not get location. Type a city instead.'); },{timeout:8000});
+}
+function goToUser(){ if(map) map.flyTo([userLat,userLng],14); }
+
+// ── GEOCODE ────────────────────────────────────────────────
+async function geocodeCity(q){
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`,{headers:{'Accept-Language':'en'}});
+    const d=await r.json();
+    if(d.length){ userLat=parseFloat(d[0].lat); userLng=parseFloat(d[0].lon); return true; }
+  }catch(e){}
+  return false;
+}
+
+// ── SEARCH ─────────────────────────────────────────────────
+async function doSearch(){
+  const q=document.getElementById('cityInput').value.trim();
+  if(q){ await geocodeCity(q); }
+  const r=parseInt(document.getElementById('radiusSlider').value);
+  setLoading(true);
+
+  // Try live Overpass API
+  const oq=buildQuery(userLat,userLng,r,activeCat);
+  const endpoints=[
+    `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(oq)}`,
+    `https://overpass.kumi.systems/api/interpreter?data=${encodeURIComponent(oq)}`
+  ];
+  for(const url of endpoints){
+    try{
+      const res=await fetch(url,{signal:AbortSignal.timeout(7000)});
+      if(!res.ok) continue;
+      const data=await res.json();
+      if(data.elements&&data.elements.length>0){ processLive(data.elements,r); return; }
+    }catch(e){ continue; }
+  }
+  // Fallback to local data
+  useFallback(r);
+}
+
+function buildQuery(lat,lng,r,cat){
+  const tags={all:[{amenity:'restaurant'},{amenity:'cafe'},{amenity:'bar'},{leisure:'park'},{amenity:'playground'},{tourism:'hotel'},{railway:'station'}],restaurant:[{amenity:'restaurant'},{amenity:'fast_food'}],cafe:[{amenity:'cafe'}],bar:[{amenity:'bar'},{amenity:'pub'},{amenity:'nightclub'}],park:[{leisure:'park'},{leisure:'garden'}],kids:[{amenity:'playground'},{leisure:'playground'},{tourism:'zoo'}],transport:[{railway:'station'},{amenity:'bus_station'},{railway:'tram_stop'}],hotel:[{tourism:'hotel'},{tourism:'hostel'}]}[cat]||[];
+  const parts=tags.map(t=>{ const[k,v]=Object.entries(t)[0]; return `node["${k}"="${v}"](around:${r},${lat},${lng});way["${k}"="${v}"](around:${r},${lat},${lng});`; }).join('');
+  return `[out:json][timeout:12];(${parts});out center 50;`;
+}
+
+function processLive(els,r){
+  clearMarkers(); allResults=[];
+  els.forEach(el=>{
+    const t=el.tags||{}; if(!t.name) return;
+    const lat=el.lat||(el.center&&el.center.lat);
+    const lng=el.lon||(el.center&&el.center.lon);
+    if(!lat||!lng) return;
+    const dist=haversine(userLat,userLng,lat,lng);
+    const cat=detectCat(t);
+    allResults.push({id:el.id,name:t.name,lat,lng,dist,cat,addr:[t['addr:street'],t['addr:housenumber']].filter(Boolean).join(' ')||'',opening:t.opening_hours||'',cuisine:t.cuisine||'',fee:t.fee||'',wheelchair:t.wheelchair||''});
+  });
+  finish(r);
+}
+
+function useFallback(r){
+  clearMarkers(); allResults=[];
+  PLACES.forEach(p=>{
+    const dist=haversine(userLat,userLng,p.lat,p.lng);
+    if((activeCat==='all'||p.cat===activeCat)&&dist<=r) allResults.push({...p,dist});
+  });
+  finish(r);
+}
+
+function finish(r){
+  allResults.sort((a,b)=>a.dist-b.dist);
+  renderList(allResults);
+  renderMarkers(allResults);
+  if(map){ placeUserPin(userLat,userLng); map.flyTo([userLat,userLng],13); }
+  setLoading(false);
+  document.getElementById('resultsCount').textContent=`${allResults.length} places found`;
+  // Auto-switch to map if map tab was last
+}
+
+function detectCat(t){
+  if(t.amenity==='restaurant'||t.amenity==='fast_food') return 'restaurant';
+  if(t.amenity==='cafe') return 'cafe';
+  if(t.amenity==='bar'||t.amenity==='pub'||t.amenity==='nightclub') return 'bar';
+  if(t.leisure==='park'||t.leisure==='garden') return 'park';
+  if(t.amenity==='playground'||t.leisure==='playground') return 'kids';
+  if(t.railway==='station'||t.amenity==='bus_station') return 'transport';
+  if(t.tourism==='hotel'||t.tourism==='hostel') return 'hotel';
+  return 'all';
+}
+
+function haversine(lat1,lng1,lat2,lng2){
+  const R=6371000,dL=(lat2-lat1)*Math.PI/180,dN=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dN/2)**2;
+  return Math.round(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a)));
+}
+function fmtD(m){ return m<1000?m+'m':(m/1000).toFixed(1)+'km'; }
+
+// ── RENDER LIST ────────────────────────────────────────────
+function renderList(items){
+  if(!items.length){
+    document.getElementById('resultsList').innerHTML=`<div class="state-box"><div class="state-emoji">🔍</div><div class="state-title">No spots found</div><div class="state-sub">Try increasing the radius or choosing a different category.</div></div>`;
+    return;
+  }
+  document.getElementById('resultsList').innerHTML=items.map(p=>`
+    <div class="pcard${activeId===p.id?' sel':''}" id="pc-${p.id}" onclick="tapCard(${p.id})">
+      <div class="pcard-top">
+        <span class="pcard-cat" style="color:${CAT_COLOR[p.cat]||'var(--gold)'}">${CAT_EMOJI[p.cat]||'📍'} ${p.cat}</span>
+        <span class="pcard-dist">${fmtD(p.dist)}</span>
+      </div>
+      <div class="pcard-name">${p.name}</div>
+      ${p.addr?`<div class="pcard-addr">📍 ${p.addr}</div>`:''}
+      <div class="pcard-tags">
+        ${p.opening?`<span class="ptag b">🕐 ${p.opening.substring(0,18)}</span>`:''}
+        ${p.cuisine?`<span class="ptag">${p.cuisine.substring(0,20)}</span>`:''}
+        ${p.fee==='no'?`<span class="ptag y">Free</span>`:''}
+        ${p.wheelchair==='yes'?`<span class="ptag g">♿</span>`:''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── MARKERS ────────────────────────────────────────────────
+function renderMarkers(items){
+  if(!map) return;
+  items.forEach(p=>{
+    const bg=MK_BG[p.cat]||'mk-food';
+    const icon=L.divIcon({html:`<div class="mk ${bg}">${CAT_EMOJI[p.cat]||'📍'}</div>`,className:'',iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-18]});
+    const m=L.marker([p.lat,p.lng],{icon}).addTo(map);
+    m.bindPopup(`
+      <div class="lpop-cat" style="color:${CAT_COLOR[p.cat]||'var(--gold)'}">${CAT_EMOJI[p.cat]} ${p.cat.toUpperCase()}</div>
+      <div class="lpop-name">${p.name}</div>
+      <div class="lpop-dist">${fmtD(p.dist)} away</div>
+      <button class="lpop-btn" onclick="showSheet(${p.id})">Details + Add to day →</button>
+    `,{maxWidth:200});
+    m.on('click',()=>{ activeId=p.id; renderList(allResults); });
+    placeMarkers.push(m);
+  });
+}
+function clearMarkers(){ placeMarkers.forEach(m=>map&&map.removeLayer(m)); placeMarkers=[]; }
+
+// ── TAP CARD ───────────────────────────────────────────────
+function tapCard(id){
+  const p=allResults.find(x=>x.id===id); if(!p) return;
+  activeId=id;
+  renderList(allResults);
+  showSheet(id);
+  // Switch to map and fly
+  switchTab('map');
+  if(map) map.flyTo([p.lat,p.lng],16,{duration:0.8});
+  setTimeout(()=>{ placeMarkers[allResults.indexOf(p)]?.openPopup(); },900);
+}
+
+// ── SHEET ──────────────────────────────────────────────────
+function showSheet(id){
+  const p=allResults.find(x=>x.id===id); if(!p) return;
+  const inDay=myDay.find(x=>x.id===id);
+  document.getElementById('sheetContent').innerHTML=`
+    <div class="sheet-badge" style="color:${CAT_COLOR[p.cat]||'var(--gold)'}">${CAT_EMOJI[p.cat]} ${p.cat} · ${fmtD(p.dist)}</div>
+    <div class="sheet-name">${p.name}</div>
+    <div class="sheet-addr">${p.addr||'City centre'}</div>
+    <div class="sheet-grid">
+      <div class="sheet-stat"><div class="sheet-stat-label">Hours</div><div class="sheet-stat-val">${p.opening||'Check maps'}</div></div>
+      <div class="sheet-stat"><div class="sheet-stat-label">Type</div><div class="sheet-stat-val">${p.cuisine||p.cat}</div></div>
+      <div class="sheet-stat"><div class="sheet-stat-label">Price</div><div class="sheet-stat-val">${p.fee==='no'?'Free entry':'Paid'}</div></div>
+      <div class="sheet-stat"><div class="sheet-stat-label">Access</div><div class="sheet-stat-val">${p.wheelchair==='yes'?'♿ Yes':'Check site'}</div></div>
+    </div>
+    <div class="sheet-actions">
+      <button class="sact primary" onclick="addToDay(${id})">${inDay?'✓ In my day':'+ Add to my day'}</button>
+      <button class="sact" onclick="openMaps(${id})">Open Maps</button>
+    </div>
+  `;
+  document.getElementById('sheet').classList.add('open');
+}
+function closeSheet(){ document.getElementById('sheet').classList.remove('open'); }
+function openMaps(id){
+  const p=allResults.find(x=>x.id===id);
+  if(p) window.open(`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`,'_blank');
+}
+
+// ── MY DAY ─────────────────────────────────────────────────
+function addToDay(id){
+  const p=allResults.find(x=>x.id===id);
+  if(!p||myDay.find(x=>x.id===id)) return;
+  myDay.push(p);
+  updateDayBadge();
+  showSheet(id);
+}
+function removeFromDay(id){
+  myDay=myDay.filter(x=>x.id!==id);
+  renderDayView(); updateDayBadge();
+}
+function clearDay(){ myDay=[]; renderDayView(); updateDayBadge(); }
+function updateDayBadge(){
+  const b=document.getElementById('dayBadge');
+  if(myDay.length){ b.style.display='inline-flex'; b.textContent=myDay.length; }
+  else b.style.display='none';
+}
+function renderDayView(){
+  const empty=document.getElementById('dayEmpty');
+  const stops=document.getElementById('dayStops');
+  const shareBtn=document.getElementById('shareBtn');
+  if(!myDay.length){
+    empty.style.display='block'; stops.innerHTML=''; shareBtn.style.display='none'; return;
+  }
+  empty.style.display='none';
+  shareBtn.style.display='block';
+  stops.innerHTML=myDay.map((p,i)=>`
+    <div class="day-stop">
+      <div class="stop-num">${i+1}</div>
+      <div class="stop-info">
+        <div class="stop-name">${p.name}</div>
+        <div class="stop-cat">${CAT_EMOJI[p.cat]} ${p.cat} · ${fmtD(p.dist)} · ${p.opening||''}</div>
+      </div>
+      <button class="stop-remove" onclick="removeFromDay(${p.id})">✕</button>
+    </div>
+  `).join('');
+}
+function shareDay(){
+  const text='My HiddenSpots day plan:\n'+myDay.map((p,i)=>`${i+1}. ${p.name} (${p.addr})`).join('\n')+'\n\nvia HiddenSpots';
+  if(navigator.share){ navigator.share({title:'My HiddenSpots Day Plan',text}); }
+  else { navigator.clipboard.writeText(text).then(()=>alert('Day plan copied to clipboard!')); }
+}
+
+// ── TABS ───────────────────────────────────────────────────
+function switchTab(t){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
+  const key=t.charAt(0).toUpperCase()+t.slice(1);
+  document.getElementById('view'+key).classList.add('active');
+  document.getElementById('tab-'+t).classList.add('active');
+  if(t==='map'&&!map) initMap();
+  if(t==='day') renderDayView();
+  if(t==='ai'){ document.getElementById('aiStep1').style.display='block'; }
+}
+
+// ── HELPERS ────────────────────────────────────────────────
+function setCat(el){
+  document.querySelectorAll('.cat-chip').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active'); activeCat=el.dataset.cat;
+}
+function sortDist(){ allResults.sort((a,b)=>a.dist-b.dist); renderList(allResults); }
+function setLoading(on){
+  const btn=document.querySelector('.go-btn');
+  if(on){ btn.textContent='...'; btn.disabled=true;
+    document.getElementById('resultsList').innerHTML=`<div class="state-box"><div class="spinner"></div><div class="state-title">Searching nearby</div><div class="state-sub">Finding real places around you…</div></div>`;
+  } else { btn.textContent='Go'; btn.disabled=false; }
+}
+
+// ── AI TRIP PLANNER ───────────────────────────────────────
+const plan = { arrival:'', departure:'', who:'', budget:'', vibes:[], extra:'' };
+
+function selTime(el, type){
+  el.closest('.time-picker').querySelectorAll('.time-chip').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel');
+  plan[type] = el.dataset.v;
+  if(plan.arrival && plan.departure) document.getElementById('next1').disabled=false;
+}
+function selWho(el){
+  document.querySelectorAll('.who-chip').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel'); plan.who = el.dataset.v;
+  checkStep2();
+}
+function selBudget(el){
+  document.querySelectorAll('.budget-btn').forEach(b=>b.classList.remove('sel'));
+  el.classList.add('sel'); plan.budget = el.dataset.v;
+  checkStep2();
+}
+function checkStep2(){
+  document.getElementById('next2').disabled = !(plan.who && plan.budget);
+}
+function selVibe(el){
+  const v = el.dataset.v;
+  const idx = plan.vibes.indexOf(v);
+  if(idx>-1){ plan.vibes.splice(idx,1); el.classList.remove('sel'); }
+  else if(plan.vibes.length<3){ plan.vibes.push(v); el.classList.add('sel'); }
+  document.getElementById('next3').disabled = plan.vibes.length===0;
+}
+
+function goStep(n){
+  document.querySelectorAll('.ai-steps,[id^="aiStep"]').forEach(s=>s.style.display='none');
+  document.getElementById('aiLoading').style.display='none';
+  document.getElementById('aiResult').style.display='none';
+  const el = document.getElementById('aiStep'+n);
+  if(el){ el.style.display='block'; document.getElementById('aiViewInner').scrollTop=0; }
+  if(n===4) buildSummary();
+}
+
+function buildSummary(){
+  const vibeLabels={hidden_gems:'Hidden Gems',nightlife:'Nightlife',couple_romantic:'Romantic',history_culture:'History & Culture',local_life:'Live Like a Local',nature_outdoor:'Nature & Outdoors',food_coffee:'Food & Coffee',shopping:'Shopping',sports_active:'Sports & Active',kids_family:'Kids & Family'};
+  const whoLabels={solo:'Solo traveller',couple:'Couple',friends:'Group of friends',family_kids:'Family with kids',family_adult:'Family (adults)',business:'Business trip'};
+  const budgetLabels={free:'Free & budget friendly',mid:'Mid range (€10-40)',splurge:'Splurge (€40+)'};
+  document.getElementById('planSummary').innerHTML=
+    `⏰ <b>${plan.arrival}</b> arrival → <b>${plan.departure==='next'?'Next morning':plan.departure}</b> departure<br>
+     👥 <b>${whoLabels[plan.who]||plan.who}</b><br>
+     💰 <b>${budgetLabels[plan.budget]||plan.budget}</b><br>
+     🎯 <b>${plan.vibes.map(v=>vibeLabels[v]||v).join(', ')}</b>`;
+}
+
+async function generatePlan(){
+  plan.extra = document.getElementById('extraRequest').value.trim();
+  document.getElementById('aiStep4').style.display='none';
+  document.getElementById('aiLoading').style.display='block';
+  document.getElementById('aiViewInner').scrollTop=0;
+
+  const msgs=['Picking the best hidden spots for you…','Planning your route to save time…','Adding local insider tips…','Matching your vibe to the best local places…'];
+  let mi=0;
+  const ticker=setInterval(()=>{ document.getElementById('loadingMsg').textContent=msgs[mi=(mi+1)%msgs.length]; },2200);
+
+  const vibeLabels={hidden_gems:'hidden gems and secret local spots',nightlife:'nightlife bars and clubs',couple_romantic:'romantic cafés and river walks',history_culture:'history museums and old town',local_life:'living like a local with markets and neighbourhoods',nature_outdoor:'nature parks and outdoor walks',food_coffee:'local food and specialty coffee',shopping:'shopping markets and boutiques',sports_active:'sports zones and active activities',kids_family:'family activities kids will love'};
+  const whoMap={solo:'solo traveller',couple:'a couple',friends:'a group of friends',family_kids:'a family with young children',family_adult:'a family of adults',business:'a business traveller'};
+  const budgetMap={free:'completely free or very budget friendly (under €5)',mid:'mid range budget (€10-40 per activity)',splurge:'willing to splurge on quality (€40+)'};
+
+  const prompt=`You are a world-class local travel expert. Create a detailed, personalised 1-day itinerary for the city the visitor specifies.
+
+VISITOR DETAILS:
+- Arrival: ${plan.arrival} | Departure: ${plan.departure==='next'?'next morning (staying overnight)':plan.departure}
+- Group: ${whoMap[plan.who]||plan.who}
+- Budget: ${budgetMap[plan.budget]||plan.budget}
+- Interests: ${plan.vibes.map(v=>vibeLabels[v]||v).join(', ')}
+${plan.extra?`- Special requests: ${plan.extra}`:''}
+
+Create a realistic hour-by-hour itinerary with 5-8 stops. For EACH stop include:
+1. Exact time (e.g. 09:00)
+2. Place name (use REAL places in the specified city)
+3. One emoji that represents it
+4. Why this place matches their vibe (2 sentences, warm and personal)
+5. Practical tip (transport, what to order, hidden trick)
+6. Estimated cost for this stop
+
+Respond ONLY in this exact JSON format, no other text:
+{
+  "title": "catchy personalised title for their day",
+  "tagline": "one line description of what kind of day this is",
+  "stops": [
+    {
+      "time": "09:00",
+      "emoji": "☕",
+      "place": "Place Name",
+      "address": "Street address, Neighbourhood",
+      "why": "Why this place is perfect for them in 2 warm sentences.",
+      "tip": "One practical insider tip.",
+      "cost": "Free / €5 / €15 etc",
+      "transport": "U4 Bornheim Mitte / 10 min walk from X"
+    }
+  ]
+}`;
+
+  // ── PASTE YOUR GEMINI API KEY BETWEEN THE QUOTES BELOW ──
+  const GEMINI_KEY = 'AIzaSyAj5afbovkOwX-Q3aiczz3dAIurugjtVSM';
+  // ─────────────────────────────────────────────────────────
+
+  try{
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`,
+      {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
+          contents:[{parts:[{text: prompt}]}],
+          generationConfig:{temperature:0.8,maxOutputTokens:1500}
+        })
+      }
+    );
+    clearInterval(ticker);
+    const data = await res.json();
+    const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    showPlan(parsed);
+  }catch(e){
+    clearInterval(ticker);
+    showFallbackPlan();
+  }
+}
+
+function showPlan(p){
+  document.getElementById('aiLoading').style.display='none';
+  document.getElementById('aiResult').style.display='block';
+  document.getElementById('aiViewInner').scrollTop=0;
+  document.getElementById('planTitle').textContent=p.title||'Your City Day Plan';
+  document.getElementById('planMeta').textContent=(p.tagline||'')+' · '+plan.arrival+' – '+(plan.departure==='next'?'Next morning':plan.departure);
+  document.getElementById('planStops').innerHTML=(p.stops||[]).map((s,i)=>`
+    <div class="plan-stop">
+      <div class="stop-circle">${s.emoji||'📍'}</div>
+      <div class="stop-body">
+        <div class="stop-time">${s.time||''}</div>
+        <div class="stop-place">${s.place||''}</div>
+        <div class="stop-why">${s.why||''}</div>
+        <div class="stop-tags">
+          ${s.address?`<span class="stag">📍 ${s.address}</span>`:''}
+          ${s.cost?`<span class="stag gold">💰 ${s.cost}</span>`:''}
+          ${s.transport?`<span class="stag">🚇 ${s.transport}</span>`:''}
+        </div>
+        ${s.tip?`<div style="font-size:11px;color:var(--gold);margin-top:8px;padding:6px 10px;border-left:2px solid var(--gold);background:rgba(201,168,76,0.05)">💡 ${s.tip}</div>`:''}
+        <button class="stop-add" id="sadd-${i}" onclick="addStopToDay(${i},'${(s.place||'').replace(/'/g,"\\'")}')">+ Add to My Day</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addStopToDay(i, name){
+  const btn=document.getElementById('sadd-'+i);
+  btn.textContent='✓ Added!'; btn.classList.add('added');
+  // Add a placeholder to myDay list
+  const fake={id:90000+i,name,cat:'all',lat:userLat+(Math.random()-0.5)*0.01,lng:userLng+(Math.random()-0.5)*0.01,addr:'City centre',dist:500,opening:'',cuisine:'',fee:'no',wheelchair:'no'};
+  if(!myDay.find(x=>x.id===fake.id)){ myDay.push(fake); updateDayBadge(); }
+}
+
+function showFallbackPlan(){
+  // Smart fallback using local places data
+  const vibeTocat={hidden_gems:'cafe',nightlife:'bar',couple_romantic:'cafe',history_culture:'culture',local_life:'restaurant',nature_outdoor:'park',food_coffee:'cafe',shopping:'restaurant',sports_active:'park',kids_family:'kids'};
+  const selected = PLACES.filter(p=>{
+    const cats = plan.vibes.map(v=>vibeTocat[v]||'all');
+    return cats.includes(p.cat)||cats.includes('all');
+  }).slice(0,6);
+
+  const fallback = {
+    title:`Your ${plan.vibes[0]?.replace(/_/g,' ')} Day`,
+    tagline:`A curated ${plan.who?.replace(/_/g,' ')} adventure`,
+    stops: selected.map((p,i)=>({
+      time: addHours(plan.arrival, i*1.5),
+      emoji: {cafe:'☕',restaurant:'🍽',bar:'🍺',park:'🌿',kids:'👦',transport:'🚇',hotel:'🏨'}[p.cat]||'📍',
+      place: p.name,
+      address: p.addr,
+      why: `A perfect spot that matches your ${plan.vibes[0]?.replace(/_/g,' ')} vibe. ${p.opening?'Open '+p.opening+'.':'A must-visit for any visitor.'}`,
+      tip: p.cuisine?`Try their ${p.cuisine}`:'Arrive early to avoid queues.',
+      cost: p.fee==='no'?'Free':'Check on site',
+      transport:'Check local U/S-Bahn'
+    }))
+  };
+  showPlan(fallback);
+}
+
+function addHours(timeStr, hours){
+  if(!timeStr||timeStr==='next') return '09:00';
+  const[h,m]=timeStr.split(':').map(Number);
+  const total=h+Math.floor(hours);
+  const mins=m+(hours%1)*60;
+  return `${String(total%24).padStart(2,'0')}:${String(Math.floor(mins)).padStart(2,'0')}`;
+}
+
+function sharePlan(){
+  const title=document.getElementById('planTitle').textContent;
+  const stops=document.querySelectorAll('.stop-place');
+  const text=title+'\n\n'+[...stops].map((s,i)=>`${i+1}. ${s.textContent}`).join('\n')+'\n\nvia HiddenSpots';
+  if(navigator.share){ navigator.share({title,text}); }
+  else { navigator.clipboard?.writeText(text).then(()=>alert('Plan copied!')); }
+}
+
+function resetPlanner(){
+  plan.arrival=''; plan.departure=''; plan.who=''; plan.budget=''; plan.vibes=[]; plan.extra='';
+  document.getElementById('aiResult').style.display='none';
+  goStep(1);
+  document.querySelectorAll('.time-chip,.who-chip,.budget-btn,.vibe-card,.int-chip').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('next1').disabled=true;
+  document.getElementById('next2').disabled=true;
+  document.getElementById('next3').disabled=true;
+  document.getElementById('extraRequest').value='';
+}
+const params=new URLSearchParams(location.search);
+if(params.get('cat')){
+  const chip=document.querySelector(`[data-cat="${params.get('cat')}"]`);
+  if(chip) setCat(chip);
+}
+</script>
+</body>
+</html>
