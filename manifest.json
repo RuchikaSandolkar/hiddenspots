@@ -1,0 +1,45 @@
+{
+  "name": "HiddenSpots",
+  "short_name": "HiddenSpots",
+  "description": "Discover hidden local gems, cafes, restaurants, nightlife and activities in any city worldwide",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#c9a84c",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["travel", "lifestyle", "navigation"],
+  "shortcuts": [
+    {
+      "name": "Find Cafes",
+      "short_name": "Cafes",
+      "url": "./index.html?cat=cafe",
+      "description": "Find nearby cafes"
+    },
+    {
+      "name": "Kids Activities",
+      "short_name": "Kids",
+      "url": "./index.html?cat=kids",
+      "description": "Find kids activities"
+    },
+    {
+      "name": "AI Day Plan",
+      "short_name": "AI Plan",
+      "url": "./index.html?tab=ai",
+      "description": "Generate your perfect day plan"
+    }
+  ]
+}
